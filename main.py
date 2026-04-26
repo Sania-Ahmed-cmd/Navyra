@@ -131,3 +131,17 @@ def predict(data: InputData):
         "weather": weather,
         "history": history[key]
     }
+# ---------------- AI ROUTES ----------------
+from optimization import choose_best_route, get_action
+
+@app.get("/route")
+def route(ship: str, risk: float, wind: float):
+    result = choose_best_route(risk, ship, wind)
+    return result
+
+
+@app.get("/action")
+def action(status: str, wind: float):
+    weather = {"wind": wind}
+    result = get_action(status, weather)
+    return result

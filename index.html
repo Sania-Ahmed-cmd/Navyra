@@ -2,15 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard</title>
+<title>Navyra</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
-
-<script>
-if(localStorage.getItem("auth") !== "true"){
-    window.location.href = "login.html";
-}
-</script>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -25,25 +19,27 @@ body { background:#0b0f19; }
 <body class="flex text-white">
 
 <!-- SIDEBAR -->
+<!-- SIDEBAR -->
 <aside class="w-64 bg-[#0b0f19] p-5 border-r border-gray-800">
-<h2 class="text-lg font-semibold mb-6">SeaVesselManager</h2>
+<h2 class="text-lg font-semibold mb-6">Navyra</h2>
 
 <nav class="space-y-3 text-sm">
+
 <a href="index.html" class="block bg-gray-800 px-3 py-2 rounded">Dashboard</a>
 
 <div>
 <div class="text-gray-400">Fleet</div>
 <div class="ml-3 mt-2 space-y-2 flex flex-col">
 <a href="fleet.html" class="text-gray-400 hover:text-white">Overview</a>
-<a href="maintenance.html" class="text-gray-400 hover:text-white">🔧 Maintenance</a>
-<a href="fuel.html" class="text-gray-400 hover:text-white">⛽ Fuel</a>
+<a href="maintenance.html" class="text-gray-400 hover:text-white">Maintenance</a>
+<a href="fuel.html" class="text-gray-400 hover:text-white">Fuel</a>
 </div>
 </div>
 
 <a href="inventory.html" class="text-gray-400 hover:text-white">Inventory</a>
+
 </nav>
 </aside>
-
 <!-- MAIN -->
 <main class="flex-1 p-6">
 
@@ -57,16 +53,37 @@ body { background:#0b0f19; }
 <div class="card p-4"><p>Safe</p><h2 id="safe" class="text-green-400"></h2></div>
 </div>
 
-<!-- MAP + LIST -->
+<!-- GRID -->
 <div class="grid grid-cols-3 gap-6">
+
+<!-- MAP -->
 <div class="col-span-2 card p-4">
 <h3 class="mb-3">Fleet Map</h3>
 <div id="map"></div>
 </div>
 
+<!-- RIGHT SIDE -->
+<div class="space-y-6">
+
+<!-- VESSELS -->
 <div class="card p-4">
 <h3 class="mb-3">Vessels</h3>
 <div id="list" class="space-y-3"></div>
+</div>
+
+<!-- AI PANEL -->
+<div class="card p-4">
+<h3 class="mb-3 flex items-center gap-2">
+🤖 AI Decision Insights
+<span class="text-xs text-green-400">● LIVE</span>
+</h3>
+
+<div class="text-sm space-y-2">
+<p><span class="text-gray-400">Route:</span> <span id="ai-route" class="text-green-400">Click a ship</span></p>
+<p><span class="text-gray-400">Action:</span> <span id="ai-action" class="text-blue-400">Click a ship</span></p>
+</div>
+</div>
+
 </div>
 </div>
 
@@ -76,61 +93,51 @@ body { background:#0b0f19; }
 
 <script>
 
+/* -------- AI -------- */
+async function getAIDecisions(ship){
+
+    const wind = Number(ship.weather.wind) || 10;
+
+    aiRoute.innerText = "Thinking...";
+    aiAction.innerText = "Thinking...";
+
+    try{
+        const res = await fetch(`http://127.0.0.1:8000/route?ship=${ship.name}&risk=${ship.risk}&wind=${wind}`);
+        const data = await res.json();
+        aiRoute.innerText = data.ai_advice || "No advice";
+    }catch{
+        aiRoute.innerText = "AI error";
+    }
+
+    try{
+        const res2 = await fetch(`http://127.0.0.1:8000/action?status=SAFE&wind=${wind}`);
+        const data2 = await res2.json();
+        aiAction.innerText = data2.ai_advice || "No suggestion";
+    }catch{
+        aiAction.innerText = "AI error";
+    }
+}
+
 /* -------- MAP -------- */
-const map = L.map('map', { zoomControl:false }).setView([58,5],5);
+const map = L.map('map').setView([58,5],5);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-/* -------- CONTROLS -------- */
-const control = L.control({ position:"topleft" });
-control.onAdd = function(){
-const div = L.DomUtil.create("div");
-div.innerHTML = `
-<div style="background:#111827;padding:8px;border-radius:10px;display:flex;flex-direction:column;gap:6px;">
-<button id="zin">+</button>
-<button id="zout">−</button>
-<button id="reset">Reset</button>
-</div>`;
-return div;
-};
-control.addTo(map);
-
-document.addEventListener("click", e=>{
-if(e.target.id==="zin") map.zoomIn();
-if(e.target.id==="zout") map.zoomOut();
-if(e.target.id==="reset") map.setView([58,5],5);
-});
-
-/* -------- SAFE FETCH -------- */
+/* -------- FETCH -------- */
 async function getShipData(s){
     try{
         const res = await fetch("http://localhost:8000/predict",{
             method:"POST",
             headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({
-                name: s.name,
-                lat: s.lat,
-                lon: s.lon,
-                fuel: s.fuel,
-                service_days: s.service_days
-            })
+            body: JSON.stringify(s)
         });
-
-        if(!res.ok) throw new Error("API error");
-
         return await res.json();
-
-    }catch(e){
-        console.error("Fallback used for:", s.name);
-
-        return {
-            risk: 0.5,
-            weather: { temp: "N/A", wind: "N/A" }
-        };
+    }catch{
+        return { risk:0.5, weather:{ temp:"N/A", wind:10 } };
     }
 }
 
-/* -------- MAIN -------- */
+/* -------- INIT -------- */
 async function init(){
 
 let safeCount=0, warnCount=0, critCount=0;
@@ -140,20 +147,17 @@ for(const s of ships){
     const data = await getShipData(s);
     const ship = { ...s, ...data };
 
-    let color;
+    let color = ship.risk>0.7?"red":ship.risk>0.3?"yellow":"green";
 
-    if(ship.risk > 0.7){ color="red"; critCount++; }
-    else if(ship.risk > 0.3){ color="yellow"; warnCount++; }
-    else{ color="green"; safeCount++; }
+    if(color==="red") critCount++;
+    else if(color==="yellow") warnCount++;
+    else safeCount++;
 
-    /* MARKER */
-    const marker = L.circleMarker([ship.lat, ship.lon],{
-        color:color,
-        radius:10,
-        fillOpacity:0.8
+    const marker=L.circleMarker([ship.lat,ship.lon],{
+        color, radius:10, fillOpacity:0.8
     }).addTo(map);
 
-    /* POPUP */
+    /* ✅ FULL POPUP BACK */
     marker.bindPopup(`
     <b>${ship.name}</b><br>
     Risk: ${(ship.risk*100).toFixed(0)}%<br>
@@ -163,7 +167,6 @@ for(const s of ships){
     🔧 Service: ${ship.service_days} days
     `);
 
-    /* LIST */
     const div=document.createElement("div");
     div.className="bg-gray-800 p-3 rounded cursor-pointer hover:bg-gray-700";
 
@@ -178,23 +181,22 @@ for(const s of ships){
     `;
 
     div.onclick=()=>{
-        map.setView([ship.lat, ship.lon],7);
+        map.setView([ship.lat,ship.lon],7);
         marker.openPopup();
+        getAIDecisions(ship); // 🔥 AI works here
     };
 
-    document.getElementById("list").appendChild(div);
+    list.appendChild(div);
 }
 
-/* KPI */
-total.innerText = ships.length;
-crit.innerText = critCount;
-warn.innerText = warnCount;
-safe.innerText = safeCount;
+total.innerText=ships.length;
+crit.innerText=critCount;
+warn.innerText=warnCount;
+safe.innerText=safeCount;
 
 }
 
-/* -------- START SAFELY -------- */
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded",init);
 
 </script>
 
