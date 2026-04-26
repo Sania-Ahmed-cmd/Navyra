@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Maintenance</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+if(localStorage.getItem("auth") !== "true"){
+    window.location.href = "login.html";
+}
+</script>
+
+<style>
+body { background:#0b0f19; }
+.card { background:#111827; border-radius:12px; }
+th, td { padding:12px; text-align:left; }
+</style>
+</head>
+
+<body class="flex text-white text-sm">
+
+<!-- SIDEBAR -->
+<aside class="w-64 bg-[#0b0f19] p-5 border-r border-gray-800">
+<h2 class="mb-6 text-lg font-semibold">SeaVesselManager</h2>
+
+<nav class="flex flex-col space-y-3">
+
+<a href="index.html" class="text-gray-400 hover:text-white">Dashboard</a>
+
+<div>
+<div class="bg-gray-800 px-3 py-2 rounded">Fleet</div>
+
+<div class="ml-3 mt-3 space-y-2 flex flex-col">
+<a href="fleet.html" class="text-gray-400 hover:text-white">Overview</a>
+<a href="maintenance.html" class="text-white">🔧 Maintenance</a>
+<a href="fuel.html" class="text-gray-400 hover:text-white">⛽ Fuel</a>
+
+</div>
+</div>
+
+<a href="inventory.html" class="text-gray-400 hover:text-white">Inventory</a>
+
+</nav>
+</aside>
+
+<!-- MAIN -->
+<main class="flex-1 p-6">
+
+<h1 class="text-xl font-semibold mb-6">Maintenance Control Panel</h1>
+
+<!-- TABLE -->
+<div class="card p-4">
+
+<table class="w-full border-collapse">
+
+<thead class="border-b border-gray-700 text-gray-400">
+<tr>
+<th class="px-4 py-3">Ship</th>
+<th class="px-4 py-3">Last Maintenance</th>
+<th class="px-4 py-3">Action</th>
+</tr>
+</thead>
+
+<tbody id="table"></tbody>
+
+</table>
+
+</div>
+
+</main>
+
+<script src="data.js"></script>
+<script src="data.js"></script>
+
+<script>
+
+/* -------- HELPER: ACTION -------- */
+function getAction(days){
+    if(days > 150) return "Immediate Repair";
+    if(days > 80) return "Schedule Maintenance";
+    return "No Action";
+}
+
+/* -------- RENDER -------- */
+const table = document.getElementById("table");
+
+ships.forEach(s=>{
+
+    const date = new Date();
+    date.setDate(date.getDate() - s.service_days);
+
+    const lastDate = date.toISOString().split("T")[0];
+    const action = getAction(s.service_days);
+
+    const row = document.createElement("tr");
+    row.className = "border-b border-gray-800";
+
+    row.innerHTML = `
+    <td class="px-4 py-3">${s.name}</td>
+    <td class="px-4 py-3">${lastDate}</td>
+    <td class="px-4 py-3">${action}</td>
+    `;
+
+    table.appendChild(row);
+
+});
+
+</script>
+
+</body>
+</html>

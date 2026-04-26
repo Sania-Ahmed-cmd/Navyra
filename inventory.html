@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Inventory</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+if(localStorage.getItem("auth") !== "true"){
+    window.location.href = "login.html";
+}
+</script>
+
+<style>
+body { background:#0b0f19; }
+.card { background:#111827; border-radius:12px; }
+</style>
+</head>
+
+<body class="flex text-white text-sm">
+
+<!-- SIDEBAR -->
+<aside class="w-64 bg-[#0b0f19] p-5 border-r border-gray-800">
+    <h2 class="text-lg font-semibold mb-6">SeaVesselManager</h2>
+
+    <nav class="flex flex-col space-y-3 text-sm">
+
+        <a href="index.html" class="block text-gray-400 hover:text-white">
+            Dashboard
+        </a>
+
+        <a href="fleet.html" class="block text-gray-400 hover:text-white">
+            Fleet
+        </a>
+
+        <a href="inventory.html" class="block bg-gray-800 px-3 py-2 rounded">
+            Inventory
+        </a>
+
+    </nav>
+</aside>
+<!-- MAIN -->
+<main class="flex-1 p-6">
+
+<!-- HEADER -->
+<div class="flex justify-between items-center mb-6">
+<h1 class="text-xl font-semibold">Inventory Management</h1>
+
+<input id="searchInput" type="text" placeholder="Search..."
+class="bg-gray-800 px-3 py-2 rounded outline-none w-64">
+</div>
+
+<!-- TABLE -->
+<div class="card p-4">
+
+<table class="w-full border-collapse">
+
+<thead class="border-b border-gray-700 text-gray-400">
+<tr>
+<th class="px-4 py-3 text-left">Ship</th>
+<th class="px-4 py-3 text-left">Item</th>
+<th class="px-4 py-3 text-left">Category</th>
+<th class="px-4 py-3 text-left">Stock</th>
+<th class="px-4 py-3 text-left">Status</th>
+</tr>
+</thead>
+
+<tbody id="inventory-body"></tbody>
+
+</table>
+
+</div>
+
+</main>
+
+<script src="data.js"></script>
+
+<script>
+
+/* -------- FLATTEN DATA -------- */
+let allItems = [];
+
+ships.forEach(ship=>{
+    ship.items.forEach(item=>{
+        allItems.push({
+            ship: ship.name,
+            name: item.name,
+            category: item.category,
+            stock: item.stock
+        });
+    });
+});
+
+/* -------- RENDER FUNCTION -------- */
+function renderTable(data){
+
+const tbody = document.getElementById("inventory-body");
+tbody.innerHTML = "";
+
+data.forEach(item=>{
+
+let status = "In Stock";
+let color = "text-green-400";
+
+if(item.stock === 0){
+status = "Out of Stock";
+color = "text-red-400";
+}
+else if(item.stock < 50){
+status = "Low";
+color = "text-yellow-400";
+}
+
+const row = document.createElement("tr");
+row.className = "border-b border-gray-800";
+
+row.innerHTML = `
+<td class="px-4 py-3">${item.ship}</td>
+<td class="px-4 py-3">${item.name}</td>
+<td class="px-4 py-3">${item.category}</td>
+<td class="px-4 py-3">${item.stock}</td>
+<td class="px-4 py-3 ${color}">${status}</td>
+`;
+
+tbody.appendChild(row);
+
+});
+}
+
+/* -------- INITIAL RENDER -------- */
+renderTable(allItems);
+
+/* -------- SEARCH FUNCTION -------- */
+document.getElementById("searchInput").addEventListener("input", function(){
+
+const query = this.value.toLowerCase();
+
+const filtered = allItems.filter(item =>
+item.ship.toLowerCase().includes(query) ||
+item.name.toLowerCase().includes(query) ||
+item.category.toLowerCase().includes(query)
+);
+
+renderTable(filtered);
+
+});
+
+</script>
+
+</body>
+</html>

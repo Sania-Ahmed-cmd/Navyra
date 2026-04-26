@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body {
+    background: radial-gradient(circle at top, #111827, #020617);
+}
+.glass {
+    backdrop-filter: blur(14px);
+    background: rgba(17,24,39,0.7);
+}
+</style>
+</head>
+
+<body class="flex items-center justify-center h-screen text-white">
+
+<!-- CARD -->
+<div class="glass p-8 w-96 rounded-2xl shadow-2xl border border-gray-800">
+
+    <!-- HEADER -->
+    <div class="text-center mb-6">
+        <h1 class="text-2xl font-semibold tracking-wide">SeaVesselManager</h1>
+        <p class="text-gray-400 text-sm mt-1">Fleet Control System</p>
+    </div>
+
+    <!-- INPUTS -->
+    <div class="space-y-4">
+
+        <input id="user" placeholder="Username"
+        class="w-full p-3 bg-gray-900 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition">
+
+        <input id="pass" type="password" placeholder="Password"
+        class="w-full p-3 bg-gray-900 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition">
+
+    </div>
+
+    <!-- BUTTON -->
+    <button onclick="login()"
+    class="w-full mt-5 bg-blue-600 py-3 rounded-lg hover:bg-blue-500 transition font-medium">
+        Login
+    </button>
+
+    <!-- ERROR -->
+    <p id="error" class="text-red-400 text-sm mt-3 text-center hidden">
+        Invalid credentials
+    </p>
+
+    <!-- FOOTER -->
+    <p class="text-gray-500 text-xs text-center mt-6">
+        Secure access to fleet operations
+    </p>
+
+</div>
+
+<script>
+
+function login(){
+
+const user = document.getElementById("user").value;
+const pass = document.getElementById("pass").value;
+
+if(user === "admin" && pass === "1234"){
+    localStorage.setItem("auth", "true");
+    window.location.href = "index.html";
+}else{
+    document.getElementById("error").classList.remove("hidden");
+}
+
+}
+
+</script>
+
+
+</body>
+</html>

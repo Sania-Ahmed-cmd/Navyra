@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fleet</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+if(localStorage.getItem("auth") !== "true"){
+    window.location.href = "login.html";
+}
+</script>
+
+<style>
+body { background:#0b0f19; }
+.card { background:#111827; border-radius:12px; }
+</style>
+</head>
+
+<body class="flex text-white">
+
+<!-- SIDEBAR -->
+<aside class="w-64 bg-[#0b0f19] p-5 border-r border-gray-800">
+<h2 class="text-lg font-semibold mb-6">SeaVesselManager</h2>
+
+<nav class="space-y-3 text-sm">
+
+<a href="index.html" class="text-gray-400 hover:text-white">Dashboard</a>
+
+<div>
+<div class="bg-gray-800 px-3 py-2 rounded">Fleet</div>
+
+<div class="ml-3 mt-3 space-y-2 flex flex-col">
+<a href="fleet.html" class="text-white">Overview</a>
+<a href="maintenance.html" class="text-gray-400 hover:text-white">🔧 Maintenance</a>
+<a href="fuel.html" class="text-gray-400 hover:text-white">⛽ Fuel</a>
+</div>
+</div>
+
+<a href="inventory.html" class="text-gray-400 hover:text-white">Inventory</a>
+
+</nav>
+</aside>
+
+<!-- MAIN -->
+<main class="flex-1 p-6">
+
+<h1 class="text-xl mb-6">Fleet Overview</h1>
+
+<!-- CHARTS -->
+<div class="grid grid-cols-3 gap-6 mb-6">
+
+<div class="col-span-2 card p-4">
+<canvas id="lineChart"></canvas>
+</div>
+
+<div class="card p-4">
+<canvas id="pieChart"></canvas>
+</div>
+
+</div>
+
+<!-- TABLE -->
+<div class="card p-4">
+
+<table class="w-full border-collapse text-sm">
+
+<thead class="border-b border-gray-700 text-gray-400">
+<tr>
+<th class="px-4 py-3 text-left">Ship</th>
+<th class="px-4 py-3 text-left">Fuel</th>
+<th class="px-4 py-3 text-left">Service Days</th>
+<th class="px-4 py-3 text-left">Risk</th>
+<th class="px-4 py-3 text-left">Status</th>
+</tr>
+</thead>
+
+<tbody id="fleetTable"></tbody>
+
+</table>
+
+</div>
+
+</main>
+
+<script src="data.js"></script>
+
+<script>
+
+/* -------- BACKEND -------- */
+async function getShipData(s){
+    const res = await fetch("http://127.0.0.1:8000/predict",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            lat: s.lat,
+            lon: s.lon,
+            fuel: s.fuel,
+            service_days: s.service_days
+        })
+    });
+    return await res.json();
+}
+
+/* -------- MAIN -------- */
+let safe=0, warn=0, crit=0;
+
+async function init(){
+
+const results = await Promise.all(
+    ships.map(async s => {
+        const data = await getShipData(s);
+        return { ...s, ...data };
+    })
+);
+
+results.forEach(s=>{
+
+    let status, color;
+
+    if(s.risk > 0.7){
+        status="Critical";
+        color="text-red-400";
+        crit++;
+    }
+    else if(s.risk > 0.3){
+        status="Warning";
+        color="text-yellow-400";
+        warn++;
+    }
+    else{
+        status="Safe";
+        color="text-green-400";
+        safe++;
+    }
+
+    const row=document.createElement("tr");
+    row.className="border-b border-gray-800";
+
+    row.innerHTML=`
+    <td class="px-4 py-3">${s.name}</td>
+    <td class="px-4 py-3">${s.fuel}%</td>
+    <td class="px-4 py-3">${s.service_days}</td>
+    <td class="px-4 py-3">${(s.risk*100).toFixed(0)}%</td>
+    <td class="px-4 py-3 ${color}">${status}</td>
+    `;
+
+    document.getElementById("fleetTable").appendChild(row);
+
+});
+
+/* -------- CHARTS -------- */
+
+/* Line chart (still demo/random trend) */
+new Chart(document.getElementById("lineChart"),{
+type:"line",
+data:{
+labels:["2","4","6","8","10","12"],
+datasets: results.map(s=>({
+label:s.name,
+data:Array(6).fill(0).map(()=>Math.random()*100)
+}))
+},
+options:{
+plugins:{legend:{labels:{color:"white"}}},
+scales:{
+x:{ticks:{color:"white"}},
+y:{ticks:{color:"white"}}
+}
+}
+});
+
+/* Pie chart (REAL DATA) */
+new Chart(document.getElementById("pieChart"),{
+type:"pie",
+data:{
+labels:["Safe","Warning","Critical"],
+datasets:[{
+data:[safe, warn, crit],
+backgroundColor:["#34d399","#fbbf24","#f87171"]
+}]
+},
+options:{
+plugins:{legend:{labels:{color:"white"}}}
+}
+});
+
+}
+
+init();
+
+</script>
+
+</body>
+</html>
