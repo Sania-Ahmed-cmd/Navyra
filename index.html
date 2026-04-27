@@ -131,9 +131,14 @@ async function getShipData(s){
             headers:{"Content-Type":"application/json"},
             body: JSON.stringify(s)
         });
-        return await res.json();
-    }catch{
-        return { risk:0.5, weather:{ temp:"N/A", wind:10 } };
+
+        const data = await res.json();
+        console.log("API DATA:", data);  // 👈 ADD THIS LINE
+
+        return data;
+
+    } catch(err){
+        console.error("Fetch error:", err);
     }
 }
 
