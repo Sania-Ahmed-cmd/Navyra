@@ -1,8 +1,11 @@
+# ---------------- IMPORTS ----------------
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
+
+from optimization import choose_best_route, get_action
 
 app = FastAPI()
 
@@ -36,7 +39,6 @@ def get_weather(lat, lon):
             raise Exception("Weather API failed")
 
         data = res.json()
-
         cw = data.get("current_weather", {})
 
         return {
@@ -74,10 +76,16 @@ def compute_risk(wind, fuel, service_days):
 
 # ---------------- HISTORY STORAGE ----------------
 history = {}
-MAX_POINTS = 20  # cleaner
+MAX_POINTS = 20
 
 
-# ---------------- API ----------------
+# ---------------- ROOT (IMPORTANT FOR RENDER) ----------------
+@app.get("/")
+def home():
+    return {"status": "API running"}
+
+
+# ---------------- MAIN API ----------------
 @app.post("/predict")
 def predict(data: InputData):
 
@@ -94,7 +102,7 @@ def predict(data: InputData):
         data.service_days
     )
 
-    # history init
+    # history
     if key not in history:
         history[key] = []
 
@@ -105,7 +113,7 @@ def predict(data: InputData):
 
     history[key] = history[key][-MAX_POINTS:]
 
-    # status logic (NEW - useful for UI)
+    # status
     if risk > 0.7:
         status = "Critical"
     elif risk > 0.3:
@@ -113,9 +121,23 @@ def predict(data: InputData):
     else:
         status = "Safe"
 
+    # ---------------- ROUTE + ACTION (FIXED PART) ----------------
+    try:
+        route_data = choose_best_route(risk, "Azzam", weather["wind"])
+        action_data = get_action(status, weather)
+    except Exception as e:
+        print("Route/Action error:", e)
+        route_data = {"system_choice": "Default Route"}
+        action_data = {"system_action": "Normal Operation"}
+
+    # ---------------- FINAL RESPONSE ----------------
     return {
         "risk": round(risk, 3),
         "status": status,
+
+        # ✅ IMPORTANT (frontend needs these)
+        "route": route_data.get("system_choice", "Default Route"),
+        "action": action_data.get("system_action", "Normal Operation"),
 
         "components": {
             "weather": round(w, 2),
@@ -131,17 +153,14 @@ def predict(data: InputData):
         "weather": weather,
         "history": history[key]
     }
-# ---------------- AI ROUTES ----------------
-from optimization import choose_best_route, get_action
 
+
+# ---------------- EXTRA ROUTES ----------------
 @app.get("/route")
 def route(ship: str, risk: float, wind: float):
-    result = choose_best_route(risk, ship, wind)
-    return result
+    return choose_best_route(risk, ship, wind)
 
 
 @app.get("/action")
 def action(status: str, wind: float):
-    weather = {"wind": wind}
-    result = get_action(status, weather)
-    return result
+    return get_action(status, {"wind": wind})

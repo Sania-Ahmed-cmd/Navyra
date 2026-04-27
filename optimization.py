@@ -1,19 +1,21 @@
 # ---------------- IMPORTS ----------------
-import google.generativeai as genai
 import os
 
-# ---------------- GEMINI SETUP ----------------
-# ⚠️ Recommended: use environment variable
-# setx GEMINI_API_KEY "your_api_key_here"
+# Safe Gemini import
+try:
+    import google.generativeai as genai
+except:
+    genai = None
 
+
+# ---------------- GEMINI SETUP ----------------
 api_key = os.getenv("GEMINI_API_KEY")
 
-# Quick fallback (ONLY for testing, remove before GitHub upload)
-if not api_key:
-    api_key = "AIzaSyC7_2RFvrMSQqxHzWa10hQ6fFLsLmS37No"
-
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel("gemini-pro")
+if genai and api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-pro")
+else:
+    model = None
 
 
 # ---------------- ROUTES ----------------
@@ -30,34 +32,6 @@ routes = {
     "Eclipse": [
         {"name": "Atlantic Lane", "weather_sensitivity": 0.8, "congestion": 0.5, "distance": 1.0},
         {"name": "Southern Drift", "weather_sensitivity": 0.6, "congestion": 0.4, "distance": 1.2}
-    ],
-    "Serene": [
-        {"name": "Mediterranean Path", "weather_sensitivity": 0.5, "congestion": 0.8, "distance": 1.0},
-        {"name": "Open Sea Route", "weather_sensitivity": 0.7, "congestion": 0.4, "distance": 1.1}
-    ],
-    "Dubai": [
-        {"name": "Gulf Corridor", "weather_sensitivity": 0.6, "congestion": 0.9, "distance": 1.0},
-        {"name": "Indian Ocean Route", "weather_sensitivity": 0.8, "congestion": 0.4, "distance": 1.2}
-    ],
-    "Al Said": [
-        {"name": "Arabian Route", "weather_sensitivity": 0.7, "congestion": 0.6, "distance": 1.0},
-        {"name": "Deep Ocean Path", "weather_sensitivity": 0.9, "congestion": 0.3, "distance": 1.2}
-    ],
-    "Radiant": [
-        {"name": "Northern Trade Route", "weather_sensitivity": 0.8, "congestion": 0.5, "distance": 1.0},
-        {"name": "Low Risk Detour", "weather_sensitivity": 0.4, "congestion": 0.3, "distance": 1.3}
-    ],
-    "Octopus": [
-        {"name": "Research Corridor", "weather_sensitivity": 0.6, "congestion": 0.2, "distance": 1.1},
-        {"name": "Storm Avoidance Route", "weather_sensitivity": 0.3, "congestion": 0.3, "distance": 1.4}
-    ],
-    "Lady Moura": [
-        {"name": "Luxury Coastal Route", "weather_sensitivity": 0.5, "congestion": 0.7, "distance": 1.0},
-        {"name": "Balanced Ocean Route", "weather_sensitivity": 0.6, "congestion": 0.5, "distance": 1.1}
-    ],
-    "Nord": [
-        {"name": "Northern Ice Edge", "weather_sensitivity": 1.2, "congestion": 0.2, "distance": 0.9},
-        {"name": "Safe Southern Loop", "weather_sensitivity": 0.5, "congestion": 0.3, "distance": 1.4}
     ]
 }
 
@@ -69,18 +43,24 @@ def compute_weather_exposure(wind, sensitivity):
 
 # ---------------- GEMINI HELPER ----------------
 def ask_gemini(prompt):
+    if not model:
+        return "AI unavailable"
+
     try:
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"AI unavailable: {str(e)}"
+        return f"AI error: {str(e)}"
 
 
 # ---------------- ROUTE OPTIMIZATION ----------------
 def choose_best_route(base_risk, ship_name, wind):
 
     if ship_name not in routes:
-        return {"system": "DEFAULT ROUTE", "ai": "No AI suggestion"}
+        return {
+            "system_choice": "DEFAULT ROUTE",
+            "ai_advice": "No AI suggestion"
+        }
 
     best = None
     best_score = float("inf")
@@ -106,11 +86,7 @@ def choose_best_route(base_risk, ship_name, wind):
 
     System chose route: {best}
 
-    Available routes:
-    {routes[ship_name]}
-
-    Do you agree with the system choice?
-    If not, suggest a better route with reason.
+    Do you agree? Suggest better if needed.
     """
 
     ai_response = ask_gemini(prompt)
@@ -125,32 +101,31 @@ def choose_best_route(base_risk, ship_name, wind):
 def estimate_delay(risk):
     if risk < 0.3:
         return 0
-    if risk < 0.6:
+    elif risk < 0.6:
         return 2
-    if risk < 0.8:
+    elif risk < 0.8:
         return 6
-    return 12
+    else:
+        return 12
 
 
 # ---------------- DISRUPTION ----------------
 def detect_disruption(risk, history):
 
     if risk > 0.75:
-        status = "CRITICAL"
+        return "CRITICAL"
     elif len(history) >= 2 and (history[-1]["risk"] - history[-2]["risk"] > 0.2):
-        status = "RISING_FAST"
+        return "RISING_FAST"
     elif risk > 0.5:
-        status = "WARNING"
+        return "WARNING"
     else:
-        status = "SAFE"
-
-    return status
+        return "SAFE"
 
 
 # ---------------- ACTION ----------------
 def get_action(status, weather):
 
-    # basic system logic
+    # System logic
     if status == "CRITICAL":
         system_action = "REROUTE IMMEDIATELY"
     elif status == "RISING_FAST":
@@ -160,14 +135,14 @@ def get_action(status, weather):
     else:
         system_action = "NORMAL OPERATION"
 
-    # 🔥 AI ADVICE
+    # AI Advice
     prompt = f"""
     Status: {status}
     Weather: {weather}
 
     System suggests: {system_action}
 
-    Do you agree? Suggest a better action if needed.
+    Do you agree?
     """
 
     ai_response = ask_gemini(prompt)
