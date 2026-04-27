@@ -126,7 +126,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 /* -------- FETCH -------- */
 async function getShipData(s){
     try{
-        const res = await fetch("http://localhost:8000/predict",{
+        const res = await fetch("https://your-app.onrender.com/predict",{
             method:"POST",
             headers:{"Content-Type":"application/json"},
             body: JSON.stringify(s)
